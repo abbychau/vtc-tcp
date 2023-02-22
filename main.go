@@ -3,7 +3,9 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"net"
+	"net/http"
 	"time"
 )
 
@@ -32,6 +34,16 @@ func main() {
 				break
 			}
 			fmt.Println(string(buf[:n]))
+			//do http request to http://localhost:3000
+			resp, err2 := http.Get("http://localhost:53000/vtc-api/nfcAuthentication?nfcId=" + string(buf[:n]))
+			if err2 != nil {
+				fmt.Println("http request failed")
+				continue
+			}
+
+			body, err := io.ReadAll(resp.Body)
+			fmt.Println(string(body))
+			resp.Body.Close()
 		}
 	}
 }
