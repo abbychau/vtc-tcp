@@ -9,7 +9,9 @@ import (
 	"time"
 )
 
-func main() {
+var currentNfcId string
+
+func nfcLoop() {
 	for {
 		conn, err := net.Dial("tcp", "10.20.30.60:8899")
 		if err != nil {
@@ -43,7 +45,22 @@ func main() {
 
 			body, err := io.ReadAll(resp.Body)
 			fmt.Println(string(body))
+			currentNfcId = string(body)
 			resp.Body.Close()
 		}
 	}
+}
+
+func main() {
+
+	//start nfc loop
+	go nfcLoop()
+
+	// http server
+	http.HandleFunc("/nfcId", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, currentNfcId)
+	})
+
+	http.ListenAndServe(":50011", nil)
+
 }
