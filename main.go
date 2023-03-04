@@ -6,10 +6,16 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 )
 
 var currentNfcId string
+var lastTimestamp int64
+
+func strContains(s, substr string) bool {
+	return strings.Contains(s, substr)
+}
 
 func nfcLoop() {
 	for {
@@ -44,8 +50,26 @@ func nfcLoop() {
 			}
 
 			body, err := io.ReadAll(resp.Body)
+
+			if err != nil {
+				fmt.Println("http request failed")
+				continue
+			}
+
 			fmt.Println(string(body))
-			currentNfcId = string(body)
+
+			// check if string(body) contains "does not"
+			if strContains(string(body), "does not") {
+				fmt.Println("nfcId not found")
+				currentNfcId = ""
+				continue
+			} else {
+				lastTimestamp = time.Now().Unix()
+				fmt.Println("nfcId found")
+
+				currentNfcId = string(buf[:n])
+			}
+
 			resp.Body.Close()
 		}
 	}
@@ -56,9 +80,20 @@ func main() {
 	//start nfc loop
 	go nfcLoop()
 
+	//clear currentNfcId every 10 seconds
+	go func() {
+		for {
+			time.Sleep(1 * time.Second)
+			if time.Now().Unix()-lastTimestamp > 30 {
+				currentNfcId = ""
+			}
+		}
+	}()
+
 	// http server
 	http.HandleFunc("/nfcId", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, currentNfcId)
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		fmt.Fprint(w, currentNfcId)
 	})
 
 	http.ListenAndServe(":50011", nil)
